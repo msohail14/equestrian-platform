@@ -1,22 +1,24 @@
 import express from 'express';
 import authMiddleware from '../middleware/auth.middleware.js';
+import coachAuthMiddleware from '../middleware/coach-auth.middleware.js';
+import {
+  initiatePaymentController,
+  webhookController,
+  getPaymentStatusController,
+  getUserPaymentsController,
+  getUserSubscriptionController,
+  cancelSubscriptionController,
+  getCoachPayoutsController,
+} from '../controllers/payment.controller.js';
 
 const router = express.Router();
 
-router.post('/initiate', authMiddleware, async (req, res) => {
-  res.status(501).json({ message: 'Payment initiation not yet implemented.' });
-});
-
-router.post('/webhook', async (req, res) => {
-  res.status(501).json({ message: 'Payment webhook not yet implemented.' });
-});
-
-router.get('/status/:transactionId', authMiddleware, async (req, res) => {
-  res.status(501).json({ message: 'Payment status not yet implemented.' });
-});
-
-router.get('/my-payments', authMiddleware, async (req, res) => {
-  res.status(501).json({ message: 'Payment history not yet implemented.' });
-});
+router.post('/initiate', authMiddleware, initiatePaymentController);
+router.post('/webhook', webhookController);
+router.get('/status/:transactionId', authMiddleware, getPaymentStatusController);
+router.get('/my-payments', authMiddleware, getUserPaymentsController);
+router.get('/my-subscription', authMiddleware, getUserSubscriptionController);
+router.patch('/subscriptions/:id/cancel', authMiddleware, cancelSubscriptionController);
+router.get('/coach-payouts', coachAuthMiddleware, getCoachPayoutsController);
 
 export default router;
