@@ -3,10 +3,12 @@ import path from 'path';
 import fs from 'fs';
 import https from 'https';
 import cors from 'cors';
+import helmet from 'helmet';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import sequelize from './config/database.js';
 import { applySchemaUpdates } from './config/schema-updates.js';
+import { generalRateLimiter } from './middleware/rate-limit.middleware.js';
 import userRoutes from './routes/user.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import mailRoutes from './routes/mail.routes.js';
@@ -21,34 +23,36 @@ import sessionRoutes from './routes/session.routes.js';
 import coachAvailabilityRoutes from './routes/coach-availability.routes.js';
 import riderRoutes from './routes/rider.routes.js';
 import coachReviewRoutes from './routes/coach-review.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT || 6060);
 
-// Automatically configure based on NODE_ENV
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const HOST = IS_PRODUCTION ? (process.env.HOST || '0.0.0.0') : '0.0.0.0';
 const USE_HTTPS = IS_PRODUCTION;
 
-// SSL certificate paths (only used in production)
 const CERT_PATH = process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/horse.atlasits.cloud/fullchain.pem';
 const KEY_PATH = process.env.SSL_KEY_PATH || '/etc/letsencrypt/live/horse.atlasits.cloud/privkey.pem';
 
-// Frontend URL based on environment
 const FRONTEND_URL = IS_PRODUCTION
   ? (process.env.FRONTEND_URL_PROD || 'https://horse.atlasits.cloud')
   : (process.env.FRONTEND_URL_DEV || 'http://localhost:5173');
 
-const allowedOrigins = [
-  FRONTEND_URL,
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://192.168.43.2:5173',
-  'http://192.168.29.2:5173',
-  'https://horse.atlasits.cloud'
-];
+const allowedOrigins = IS_PRODUCTION
+  ? [FRONTEND_URL, process.env.FRONTEND_URL_PROD].filter(Boolean)
+  : [
+      FRONTEND_URL,
+      'http://localhost:5173',
+      'http://localhost:5174',
+    ];
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+app.use(generalRateLimiter);
 app.use(
   cors({
     origin: allowedOrigins,
@@ -57,8 +61,10 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/upload', express.static(path.join(process.cwd(), 'upload')));
+
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/disciplines', disciplineRoutes);
@@ -73,9 +79,10 @@ app.use('/api/v1/coach-availability', coachAvailabilityRoutes);
 app.use('/api/v1/riders', riderRoutes);
 app.use('/api/v1/coach-reviews', coachReviewRoutes);
 app.use('/api/v1/mail', mailRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 app.get('/', (req, res) => {
-  res.send('Horse Riding Backend API is running.');
+  res.send('Equestrian Backend API is running.');
 });
 
 app.use((error, _req, res, _next) => {
@@ -96,7 +103,6 @@ const startServer = async () => {
       const options = {
         key: fs.readFileSync(KEY_PATH),
         cert: fs.readFileSync(CERT_PATH),
-        // ca: fs.readFileSync(CA_BUNDLE_PATH),
       };
 
       https.createServer(options, app).listen(PORT, () => {

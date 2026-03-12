@@ -20,7 +20,12 @@ const getAdminJwtToken = (admin) =>
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 
-export const signupAdmin = async ({ email, password, first_name, last_name }) => {
+export const signupAdmin = async ({ email, password, first_name, last_name, invite_secret }) => {
+  const requiredSecret = process.env.ADMIN_INVITE_SECRET;
+  if (requiredSecret && invite_secret !== requiredSecret) {
+    throw new Error('Invalid or missing invite secret.');
+  }
+
   if (!email || !password) {
     throw new Error('Email and password are required.');
   }
