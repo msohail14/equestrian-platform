@@ -7,6 +7,7 @@ import helmet from 'helmet';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import sequelize from './config/database.js';
+import './models/index.js';
 import { applySchemaUpdates } from './config/schema-updates.js';
 import { generalRateLimiter } from './middleware/rate-limit.middleware.js';
 import userRoutes from './routes/user.routes.js';
@@ -114,6 +115,8 @@ const startServer = async () => {
   try {
     await sequelize.authenticate();
     console.log('Database connected successfully.');
+    await sequelize.sync({ force: false });
+    console.log('Database tables synced.');
     await applySchemaUpdates();
     console.log('Schema updates applied successfully.');
 
