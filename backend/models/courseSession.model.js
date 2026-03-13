@@ -74,6 +74,30 @@ const CourseSession = sequelize.define(
         key: 'id',
       },
     },
+    horse_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'horses',
+        key: 'id',
+      },
+    },
+    arena_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'arenas',
+        key: 'id',
+      },
+    },
+    course_template_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'course_templates',
+        key: 'id',
+      },
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,

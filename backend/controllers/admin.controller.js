@@ -1,11 +1,20 @@
 import {
+  approveStable,
   changeAdminPassword,
   changeAdminProfile,
   forgotAdminPassword,
+  getAdminAnalytics,
+  getAdminBookings,
   getAdminDashboardData,
+  getAdminPayments,
+  getAdminPayouts,
+  getAdminSettings,
   loginAdmin,
+  processAdminPayout,
   resetAdminPassword,
   signupAdmin,
+  updateAdminSettings,
+  verifyCoach,
 } from '../services/admin.service.js';
 
 const handleError = (res, error) => {
@@ -83,6 +92,87 @@ export const changeAdminProfileController = async (req, res) => {
 export const getAdminDashboardController = async (_req, res) => {
   try {
     const data = await getAdminDashboardData();
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getAdminAnalyticsController = async (req, res) => {
+  try {
+    const data = await getAdminAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getAdminPaymentsController = async (req, res) => {
+  try {
+    const data = await getAdminPayments(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getAdminPayoutsController = async (req, res) => {
+  try {
+    const data = await getAdminPayouts(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const processAdminPayoutController = async (req, res) => {
+  try {
+    const data = await processAdminPayout({ payoutId: req.params.id });
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const approveStableController = async (req, res) => {
+  try {
+    const data = await approveStable({ stableId: req.params.id });
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const verifyCoachController = async (req, res) => {
+  try {
+    const data = await verifyCoach({ coachId: req.params.id });
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getAdminSettingsController = async (_req, res) => {
+  try {
+    const data = await getAdminSettings();
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const updateAdminSettingsController = async (req, res) => {
+  try {
+    const data = await updateAdminSettings({ settings: req.body });
+    return res.status(200).json(data);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+export const getAdminBookingsController = async (req, res) => {
+  try {
+    const data = await getAdminBookings(req.query);
     return res.status(200).json(data);
   } catch (error) {
     return handleError(res, error);

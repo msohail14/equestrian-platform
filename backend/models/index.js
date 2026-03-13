@@ -5,9 +5,17 @@ import CoachReview from './coachReview.model.js';
 import Course from './course.model.js';
 import CourseEnrollment from './courseEnrollment.model.js';
 import CourseSession from './courseSession.model.js';
+import CourseTemplate from './courseTemplate.model.js';
 import Discipline from './discipline.model.js';
 import Horse from './horse.model.js';
+import HorseAvailability from './horseAvailability.model.js';
+import LessonBooking from './lessonBooking.model.js';
+import LessonPackage from './lessonPackage.model.js';
+import Notification from './notification.model.js';
 import Payment from './payment.model.js';
+import PlatformSetting from './platformSetting.model.js';
+import RiderPackageBalance from './riderPackageBalance.model.js';
+import SessionFeedback from './sessionFeedback.model.js';
 import Stable from './stable.model.js';
 import Subscription from './subscription.model.js';
 import User from './user.model.js';
@@ -57,6 +65,15 @@ CourseSession.belongsTo(User, { foreignKey: 'created_by_user_id', as: 'created_b
 User.hasMany(CourseSession, { foreignKey: 'cancelled_by_user_id', as: 'cancelled_sessions' });
 CourseSession.belongsTo(User, { foreignKey: 'cancelled_by_user_id', as: 'cancelled_by_user' });
 
+Horse.hasMany(CourseSession, { foreignKey: 'horse_id', as: 'sessions' });
+CourseSession.belongsTo(Horse, { foreignKey: 'horse_id', as: 'horse' });
+
+Arena.hasMany(CourseSession, { foreignKey: 'arena_id', as: 'sessions' });
+CourseSession.belongsTo(Arena, { foreignKey: 'arena_id', as: 'arena' });
+
+CourseTemplate.hasMany(CourseSession, { foreignKey: 'course_template_id', as: 'sessions' });
+CourseSession.belongsTo(CourseTemplate, { foreignKey: 'course_template_id', as: 'course_template' });
+
 User.hasMany(CoachReview, { foreignKey: 'coach_id', as: 'coach_reviews' });
 CoachReview.belongsTo(User, { foreignKey: 'coach_id', as: 'coach' });
 
@@ -84,7 +101,63 @@ CoachPayout.belongsTo(User, { foreignKey: 'coach_id', as: 'coach' });
 CourseSession.hasMany(CoachPayout, { foreignKey: 'session_id', as: 'payouts' });
 CoachPayout.belongsTo(CourseSession, { foreignKey: 'session_id', as: 'session' });
 
+User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+Admin.hasMany(Notification, { foreignKey: 'admin_id', as: 'notifications' });
+Notification.belongsTo(Admin, { foreignKey: 'admin_id', as: 'admin' });
+
+User.hasMany(LessonBooking, { foreignKey: 'rider_id', as: 'rider_bookings' });
+LessonBooking.belongsTo(User, { foreignKey: 'rider_id', as: 'rider' });
+
+User.hasMany(LessonBooking, { foreignKey: 'coach_id', as: 'coach_bookings' });
+LessonBooking.belongsTo(User, { foreignKey: 'coach_id', as: 'coach' });
+
+Stable.hasMany(LessonBooking, { foreignKey: 'stable_id', as: 'bookings' });
+LessonBooking.belongsTo(Stable, { foreignKey: 'stable_id', as: 'stable' });
+
+Arena.hasMany(LessonBooking, { foreignKey: 'arena_id', as: 'bookings' });
+LessonBooking.belongsTo(Arena, { foreignKey: 'arena_id', as: 'arena' });
+
+Horse.hasMany(LessonBooking, { foreignKey: 'horse_id', as: 'bookings' });
+LessonBooking.belongsTo(Horse, { foreignKey: 'horse_id', as: 'horse' });
+
+CourseSession.hasOne(LessonBooking, { foreignKey: 'session_id', as: 'booking' });
+LessonBooking.belongsTo(CourseSession, { foreignKey: 'session_id', as: 'session' });
+
+Payment.hasOne(LessonBooking, { foreignKey: 'payment_id', as: 'booking' });
+LessonBooking.belongsTo(Payment, { foreignKey: 'payment_id', as: 'payment' });
+
+Horse.hasMany(HorseAvailability, { foreignKey: 'horse_id', as: 'availability' });
+HorseAvailability.belongsTo(Horse, { foreignKey: 'horse_id', as: 'horse' });
+
+User.hasMany(LessonPackage, { foreignKey: 'coach_id', as: 'lesson_packages' });
+LessonPackage.belongsTo(User, { foreignKey: 'coach_id', as: 'coach' });
+
+User.hasMany(RiderPackageBalance, { foreignKey: 'rider_id', as: 'package_balances' });
+RiderPackageBalance.belongsTo(User, { foreignKey: 'rider_id', as: 'rider' });
+
+LessonPackage.hasMany(RiderPackageBalance, { foreignKey: 'package_id', as: 'balances' });
+RiderPackageBalance.belongsTo(LessonPackage, { foreignKey: 'package_id', as: 'package' });
+
+Payment.hasOne(RiderPackageBalance, { foreignKey: 'payment_id', as: 'package_balance' });
+RiderPackageBalance.belongsTo(Payment, { foreignKey: 'payment_id', as: 'payment' });
+
+User.hasMany(CourseTemplate, { foreignKey: 'coach_id', as: 'course_templates' });
+CourseTemplate.belongsTo(User, { foreignKey: 'coach_id', as: 'coach' });
+
+CourseSession.hasOne(SessionFeedback, { foreignKey: 'session_id', as: 'feedback' });
+SessionFeedback.belongsTo(CourseSession, { foreignKey: 'session_id', as: 'session' });
+
+User.hasMany(SessionFeedback, { foreignKey: 'coach_id', as: 'given_feedback' });
+SessionFeedback.belongsTo(User, { foreignKey: 'coach_id', as: 'coach' });
+
+User.hasMany(SessionFeedback, { foreignKey: 'rider_id', as: 'received_feedback' });
+SessionFeedback.belongsTo(User, { foreignKey: 'rider_id', as: 'rider' });
+
 export {
   Admin, Arena, CoachPayout, CoachReview, Course, CourseEnrollment,
-  CourseSession, Discipline, Horse, Payment, Stable, Subscription, User,
+  CourseSession, CourseTemplate, Discipline, Horse, HorseAvailability,
+  LessonBooking, LessonPackage, Notification, Payment, PlatformSetting,
+  RiderPackageBalance, SessionFeedback, Stable, Subscription, User,
 };

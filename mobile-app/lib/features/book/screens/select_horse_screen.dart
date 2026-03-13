@@ -4,6 +4,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_scaffold.dart';
+import '../../../core/widgets/loading_state.dart';
+import '../../../core/services/horse_service.dart';
 import '../../../core/providers/booking_provider.dart';
 import '../widgets/booking_step_header.dart';
 import '../widgets/horse_card.dart';
@@ -18,30 +20,35 @@ class SelectHorseScreen extends StatefulWidget {
 }
 
 class _SelectHorseScreenState extends State<SelectHorseScreen> {
-  String? selectedHorse;
+  String? _selectedHorse;
+  List<dynamic> _horses = [];
+  bool _isLoading = true;
+  String? _error;
 
-  final List<Map<String, String>> horses = [
-    {
-      'name': 'Ferrari',
-      'discipline': 'Show Jumping',
-      'image': 'assets/images/rider_background.jpg',
-    },
-    {
-      'name': 'Bahr',
-      'discipline': 'Jumping',
-      'image': 'assets/images/close_up_of_a_brown__060c0827-BItHALfT.jpg',
-    },
-    {
-      'name': 'Beauty',
-      'discipline': 'Dressage',
-      'image': 'assets/images/dresseage_hourse_photo.png',
-    },
-    {
-      'name': 'Liva',
-      'discipline': 'Dressage',
-      'image': 'assets/images/work_programm_hourse_photo.avif',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadHorses();
+  }
+
+  Future<void> _loadHorses() async {
+    try {
+      final horses = await HorseService().getHorses();
+      if (mounted) {
+        setState(() {
+          _horses = horses;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load horses';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,67 +68,82 @@ class _SelectHorseScreenState extends State<SelectHorseScreen> {
       body: Column(
         children: [
           const BookingStepHeader(currentStep: 2),
-
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Select your horse',
-                    style: AppTextStyles.h1.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+            child: _isLoading
+                ? const LoadingState(message: 'Loading horses...')
+                : _error != null
+                    ? ErrorState(message: _error!, onRetry: () {
+                        setState(() { _isLoading = true; _error = null; });
+                        _loadHorses();
+                      })
+                    : _horses.isEmpty
+                        ? const EmptyState(
+                            message: 'No horses available',
+                            icon: Icons.pets,
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Select your horse',
+                                  style: AppTextStyles.h1.copyWith(
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.xl),
+                                GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: AppSpacing.md,
+                                        mainAxisSpacing: AppSpacing.md,
+                                        childAspectRatio: 0.75,
+                                      ),
+                                  itemCount: _horses.length,
+                                  itemBuilder: (context, index) {
+                                    final horse = _horses[index];
+                                    final name = horse['name'] ?? 'Unknown';
+                                    final discipline = horse['discipline'] ?? '';
+                                    final imageUrl = horse['profile_image_url'] ?? '';
+                                    final isSelected = _selectedHorse == name;
 
-                  const SizedBox(height: AppSpacing.xl),
+                                    return HorseCard(
+                                      name: name,
+                                      discipline: discipline,
+                                      imageUrl: imageUrl,
+                                      isSelected: isSelected,
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedHorse = name;
+                                        });
 
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: AppSpacing.md,
-                          mainAxisSpacing: AppSpacing.md,
-                          childAspectRatio: 0.75,
-                        ),
-                    itemCount: horses.length,
-                    itemBuilder: (context, index) {
-                      final horse = horses[index];
-                      final isSelected = selectedHorse == horse['name'];
+                                        bookingProvider.setHorse(name, imageUrl);
 
-                      return HorseCard(
-                        name: horse['name']!,
-                        discipline: horse['discipline']!,
-                        imageUrl: horse['image']!,
-                        isSelected: isSelected,
-                        onTap: () {
-                          setState(() {
-                            selectedHorse = horse['name'];
-                          });
-
-                          bookingProvider.setHorse(
-                            horse['name']!,
-                            horse['image']!,
-                          );
-
-                          Future.delayed(const Duration(milliseconds: 300), () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ChooseCoachScreen(),
-                              ),
-                            );
-                          });
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
+                                        Future.delayed(
+                                          const Duration(milliseconds: 300),
+                                          () {
+                                            if (mounted) {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const ChooseCoachScreen(),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
           ),
         ],
       ),

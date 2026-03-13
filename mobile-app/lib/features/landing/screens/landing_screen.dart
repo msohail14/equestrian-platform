@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../auth/screens/login_screen.dart';
+import '../../auth/screens/signup_screen.dart';
 import '../widgets/hero_section.dart';
 import '../widgets/role_selection_card.dart';
 
@@ -100,7 +101,7 @@ class LandingScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
+                          builder: (context) => const SignupScreen(),
                         ),
                       );
                     },

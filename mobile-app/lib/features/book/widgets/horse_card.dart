@@ -50,7 +50,16 @@ class HorseCard extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(AppRadii.lg),
                 ),
-                child: Image.asset(imageUrl, fit: BoxFit.cover),
+                child: imageUrl.startsWith('http')
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppColors.background,
+                        child: Icon(Icons.image, color: AppColors.textSecondary),
+                      ),
+                    )
+                  : Image.asset(imageUrl, fit: BoxFit.cover),
               ),
             ),
 

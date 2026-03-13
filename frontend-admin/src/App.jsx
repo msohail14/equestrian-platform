@@ -24,6 +24,13 @@ const AdminForgotPasswordPage = lazy(() => import('./pages/auth/AdminForgotPassw
 const AdminLoginPage = lazy(() => import('./pages/auth/AdminLoginPage'));
 const AdminResetPasswordPage = lazy(() => import('./pages/auth/AdminResetPasswordPage'));
 const AdminSignupPage = lazy(() => import('./pages/auth/AdminSignupPage'));
+const AdminBookingsPage = lazy(() => import('./pages/admin/AdminBookingsPage'));
+const AdminPaymentsPage = lazy(() => import('./pages/admin/AdminPaymentsPage'));
+const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage'));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'));
+const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage'));
+const AdminNotificationsPage = lazy(() => import('./pages/admin/AdminNotificationsPage'));
+const AdminProfilePage = lazy(() => import('./pages/admin/AdminProfilePage'));
 import { Toaster } from 'react-hot-toast';
 
 const AppRoutes = () => {
@@ -86,6 +93,13 @@ const AppRoutes = () => {
               <Route path="courses/:courseId" element={<AdminCourseDetailsPage />} />
               <Route path="riders" element={<AdminRidersPage />} />
               <Route path="rider/:riderId" element={<AdminRiderDetailsPage />} />
+              <Route path="bookings" element={<AdminBookingsPage />} />
+              <Route path="payments" element={<AdminPaymentsPage />} />
+              <Route path="payouts" element={<AdminPayoutsPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+              <Route path="analytics" element={<AdminAnalyticsPage />} />
+              <Route path="notifications" element={<AdminNotificationsPage />} />
+              <Route path="profile" element={<AdminProfilePage />} />
             </Route>
           </Route>
 

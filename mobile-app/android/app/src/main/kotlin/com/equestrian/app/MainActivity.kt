@@ -1,4 +1,4 @@
-package com.example.horse_riding_app_design
+package com.equestrian.app
 
 import io.flutter.embedding.android.FlutterActivity
 

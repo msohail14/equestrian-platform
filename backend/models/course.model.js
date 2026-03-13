@@ -94,6 +94,14 @@ const Course = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    layout_image_url: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
+    },
+    layout_drawing_data: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.ENUM('draft', 'published', 'archived'),
       allowNull: false,

@@ -60,6 +60,23 @@ const Stable = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    rating: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: true,
+    },
+    lesson_price_min: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    lesson_price_max: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    is_approved: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     is_active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

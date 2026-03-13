@@ -384,6 +384,225 @@ const ensureCoachPayoutsTable = async () => {
   `);
 };
 
+const ensureColumnExists = async (table, column, alterSql) => {
+  const [results] = await sequelize.query(`
+    SELECT COUNT(*) AS count
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = '${table}'
+      AND COLUMN_NAME = '${column}'
+  `);
+  const hasColumn = Number(results?.[0]?.count || 0) > 0;
+  if (!hasColumn) {
+    await sequelize.query(`ALTER TABLE \`${table}\` ${alterSql}`);
+  }
+};
+
+const ensureHorseNewColumns = async () => {
+  await ensureColumnExists('horses', 'age', 'ADD COLUMN `age` INT NULL AFTER `description`');
+  await ensureColumnExists('horses', 'training_level', "ADD COLUMN `training_level` ENUM('beginner','intermediate','advanced') NULL AFTER `age`");
+  await ensureColumnExists('horses', 'temperament', 'ADD COLUMN `temperament` VARCHAR(100) NULL AFTER `training_level`');
+  await ensureColumnExists('horses', 'injury_notes', 'ADD COLUMN `injury_notes` TEXT NULL AFTER `temperament`');
+  await ensureColumnExists('horses', 'rider_suitability', 'ADD COLUMN `rider_suitability` VARCHAR(255) NULL AFTER `injury_notes`');
+  await ensureColumnExists('horses', 'fei_pedigree_link', 'ADD COLUMN `fei_pedigree_link` VARCHAR(512) NULL AFTER `rider_suitability`');
+  await ensureColumnExists('horses', 'max_daily_sessions', 'ADD COLUMN `max_daily_sessions` INT NOT NULL DEFAULT 3 AFTER `fei_pedigree_link`');
+};
+
+const ensureUserNewColumns = async () => {
+  await ensureColumnExists('user', 'fei_number', 'ADD COLUMN `fei_number` VARCHAR(50) NULL AFTER `gender`');
+  await ensureColumnExists('user', 'riding_level', "ADD COLUMN `riding_level` ENUM('beginner','intermediate','advanced') NULL AFTER `fei_number`");
+  await ensureColumnExists('user', 'specialties', 'ADD COLUMN `specialties` JSON NULL AFTER `riding_level`');
+  await ensureColumnExists('user', 'bio', 'ADD COLUMN `bio` TEXT NULL AFTER `specialties`');
+  await ensureColumnExists('user', 'is_verified', 'ADD COLUMN `is_verified` BOOLEAN NOT NULL DEFAULT FALSE AFTER `bio`');
+  await ensureColumnExists('user', 'fcm_token', 'ADD COLUMN `fcm_token` VARCHAR(255) NULL AFTER `is_verified`');
+};
+
+const ensureStableNewColumns = async () => {
+  await ensureColumnExists('stables', 'rating', 'ADD COLUMN `rating` DECIMAL(3,2) NULL AFTER `description`');
+  await ensureColumnExists('stables', 'lesson_price_min', 'ADD COLUMN `lesson_price_min` DECIMAL(10,2) NULL AFTER `rating`');
+  await ensureColumnExists('stables', 'lesson_price_max', 'ADD COLUMN `lesson_price_max` DECIMAL(10,2) NULL AFTER `lesson_price_min`');
+  await ensureColumnExists('stables', 'is_approved', 'ADD COLUMN `is_approved` BOOLEAN NOT NULL DEFAULT FALSE AFTER `lesson_price_max`');
+};
+
+const ensureArenaIsActiveColumn = async () => {
+  await ensureColumnExists('arenas', 'is_active', 'ADD COLUMN `is_active` BOOLEAN NOT NULL DEFAULT TRUE AFTER `discipline_id`');
+};
+
+const ensureCourseSessionNewColumns = async () => {
+  await ensureColumnExists('course_sessions', 'horse_id', 'ADD COLUMN `horse_id` INT NULL AFTER `cancelled_by_user_id`');
+  await ensureColumnExists('course_sessions', 'arena_id', 'ADD COLUMN `arena_id` INT NULL AFTER `horse_id`');
+  await ensureColumnExists('course_sessions', 'course_template_id', 'ADD COLUMN `course_template_id` INT NULL AFTER `arena_id`');
+};
+
+const ensureCourseLayoutColumns = async () => {
+  await ensureColumnExists('courses', 'layout_image_url', 'ADD COLUMN `layout_image_url` VARCHAR(512) NULL AFTER `thumbnail_url`');
+  await ensureColumnExists('courses', 'layout_drawing_data', 'ADD COLUMN `layout_drawing_data` JSON NULL AFTER `layout_image_url`');
+};
+
+const ensureNotificationsTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`notifications\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`user_id\` INT NULL,
+      \`admin_id\` INT NULL,
+      \`type\` ENUM('lesson_booked','session_reminder','payment_confirmed','horse_assigned','horse_approved','feedback_posted','coach_verified','stable_approved','payout_processed','general') NOT NULL,
+      \`title\` VARCHAR(255) NOT NULL,
+      \`body\` TEXT NULL,
+      \`data\` JSON NULL,
+      \`is_read\` BOOLEAN NOT NULL DEFAULT FALSE,
+      \`created_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT \`fk_notifications_user\` FOREIGN KEY (\`user_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_notifications_admin\` FOREIGN KEY (\`admin_id\`) REFERENCES \`admin\`(\`id\`) ON DELETE CASCADE,
+      INDEX \`idx_notifications_user\` (\`user_id\`, \`is_read\`),
+      INDEX \`idx_notifications_admin\` (\`admin_id\`, \`is_read\`)
+    )
+  `);
+};
+
+const ensureLessonBookingsTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`lesson_bookings\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`rider_id\` INT NOT NULL,
+      \`coach_id\` INT NOT NULL,
+      \`stable_id\` INT NOT NULL,
+      \`arena_id\` INT NULL,
+      \`horse_id\` INT NULL,
+      \`session_id\` INT NULL,
+      \`booking_date\` DATE NOT NULL,
+      \`start_time\` TIME NOT NULL,
+      \`end_time\` TIME NOT NULL,
+      \`lesson_type\` ENUM('private','group') NOT NULL DEFAULT 'private',
+      \`status\` ENUM('pending_horse_approval','pending_payment','confirmed','cancelled','completed') NOT NULL DEFAULT 'pending_horse_approval',
+      \`payment_id\` INT NULL,
+      \`price\` DECIMAL(10,2) NULL,
+      \`notes\` TEXT NULL,
+      \`created_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updated_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT \`fk_lesson_bookings_rider\` FOREIGN KEY (\`rider_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_lesson_bookings_coach\` FOREIGN KEY (\`coach_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_lesson_bookings_stable\` FOREIGN KEY (\`stable_id\`) REFERENCES \`stables\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_lesson_bookings_arena\` FOREIGN KEY (\`arena_id\`) REFERENCES \`arenas\`(\`id\`) ON DELETE SET NULL,
+      CONSTRAINT \`fk_lesson_bookings_horse\` FOREIGN KEY (\`horse_id\`) REFERENCES \`horses\`(\`id\`) ON DELETE SET NULL,
+      CONSTRAINT \`fk_lesson_bookings_session\` FOREIGN KEY (\`session_id\`) REFERENCES \`course_sessions\`(\`id\`) ON DELETE SET NULL,
+      CONSTRAINT \`fk_lesson_bookings_payment\` FOREIGN KEY (\`payment_id\`) REFERENCES \`payments\`(\`id\`) ON DELETE SET NULL,
+      INDEX \`idx_lesson_bookings_rider\` (\`rider_id\`, \`status\`),
+      INDEX \`idx_lesson_bookings_coach\` (\`coach_id\`, \`status\`),
+      INDEX \`idx_lesson_bookings_date\` (\`booking_date\`, \`status\`)
+    )
+  `);
+};
+
+const ensureHorseAvailabilityTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`horse_availability\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`horse_id\` INT NOT NULL,
+      \`date\` DATE NOT NULL,
+      \`max_sessions_per_day\` INT NOT NULL DEFAULT 3,
+      \`sessions_booked\` INT NOT NULL DEFAULT 0,
+      \`is_available\` BOOLEAN NOT NULL DEFAULT TRUE,
+      \`created_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updated_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT \`fk_horse_availability_horse\` FOREIGN KEY (\`horse_id\`) REFERENCES \`horses\`(\`id\`) ON DELETE CASCADE,
+      UNIQUE KEY \`uq_horse_availability_date\` (\`horse_id\`, \`date\`),
+      INDEX \`idx_horse_availability_date\` (\`date\`, \`is_available\`)
+    )
+  `);
+};
+
+const ensureLessonPackagesTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`lesson_packages\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`coach_id\` INT NOT NULL,
+      \`title\` VARCHAR(255) NOT NULL,
+      \`description\` TEXT NULL,
+      \`lesson_count\` INT NOT NULL,
+      \`price\` DECIMAL(10,2) NOT NULL,
+      \`currency\` VARCHAR(10) NOT NULL DEFAULT 'SAR',
+      \`validity_days\` INT NOT NULL DEFAULT 30,
+      \`is_active\` BOOLEAN NOT NULL DEFAULT TRUE,
+      \`created_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updated_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT \`fk_lesson_packages_coach\` FOREIGN KEY (\`coach_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      INDEX \`idx_lesson_packages_coach\` (\`coach_id\`, \`is_active\`)
+    )
+  `);
+};
+
+const ensureRiderPackageBalancesTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`rider_package_balances\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`rider_id\` INT NOT NULL,
+      \`package_id\` INT NOT NULL,
+      \`remaining_lessons\` INT NOT NULL,
+      \`purchased_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`expires_at\` DATE NOT NULL,
+      \`payment_id\` INT NULL,
+      \`created_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT \`fk_rider_package_balances_rider\` FOREIGN KEY (\`rider_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_rider_package_balances_package\` FOREIGN KEY (\`package_id\`) REFERENCES \`lesson_packages\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_rider_package_balances_payment\` FOREIGN KEY (\`payment_id\`) REFERENCES \`payments\`(\`id\`) ON DELETE SET NULL,
+      INDEX \`idx_rider_package_balances_rider\` (\`rider_id\`, \`expires_at\`)
+    )
+  `);
+};
+
+const ensureCourseTemplatesTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`course_templates\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`coach_id\` INT NOT NULL,
+      \`name\` VARCHAR(255) NOT NULL,
+      \`difficulty\` ENUM('beginner','intermediate','advanced') NULL,
+      \`obstacles\` JSON NULL,
+      \`distances\` JSON NULL,
+      \`arena_layout\` JSON NULL,
+      \`notes\` TEXT NULL,
+      \`layout_image_url\` VARCHAR(512) NULL,
+      \`layout_drawing_data\` JSON NULL,
+      \`is_active\` BOOLEAN NOT NULL DEFAULT TRUE,
+      \`created_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updated_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT \`fk_course_templates_coach\` FOREIGN KEY (\`coach_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      INDEX \`idx_course_templates_coach\` (\`coach_id\`, \`is_active\`)
+    )
+  `);
+};
+
+const ensureSessionFeedbackTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`session_feedback\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`session_id\` INT NOT NULL,
+      \`coach_id\` INT NOT NULL,
+      \`rider_id\` INT NOT NULL,
+      \`feedback_text\` TEXT NULL,
+      \`performance_rating\` TINYINT UNSIGNED NULL,
+      \`areas_to_improve\` JSON NULL,
+      \`created_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT \`fk_session_feedback_session\` FOREIGN KEY (\`session_id\`) REFERENCES \`course_sessions\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_session_feedback_coach\` FOREIGN KEY (\`coach_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      CONSTRAINT \`fk_session_feedback_rider\` FOREIGN KEY (\`rider_id\`) REFERENCES \`user\`(\`id\`) ON DELETE CASCADE,
+      UNIQUE KEY \`uq_session_feedback_session\` (\`session_id\`),
+      INDEX \`idx_session_feedback_rider\` (\`rider_id\`)
+    )
+  `);
+};
+
+const ensurePlatformSettingsTable = async () => {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS \`platform_settings\` (
+      \`id\` INT PRIMARY KEY AUTO_INCREMENT,
+      \`key\` VARCHAR(100) NOT NULL UNIQUE,
+      \`value\` JSON NULL,
+      \`updated_at\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+};
+
 export const applySchemaUpdates = async () => {
   await ensureUserIsActiveColumn();
   await ensureUserMobileNumberColumn();
@@ -399,4 +618,18 @@ export const applySchemaUpdates = async () => {
   await ensurePaymentsTable();
   await ensureSubscriptionsTable();
   await ensureCoachPayoutsTable();
+  await ensureHorseNewColumns();
+  await ensureUserNewColumns();
+  await ensureStableNewColumns();
+  await ensureArenaIsActiveColumn();
+  await ensureCourseLayoutColumns();
+  await ensureNotificationsTable();
+  await ensureLessonBookingsTable();
+  await ensureHorseAvailabilityTable();
+  await ensureLessonPackagesTable();
+  await ensureRiderPackageBalancesTable();
+  await ensureCourseTemplatesTable();
+  await ensureSessionFeedbackTable();
+  await ensurePlatformSettingsTable();
+  await ensureCourseSessionNewColumns();
 };

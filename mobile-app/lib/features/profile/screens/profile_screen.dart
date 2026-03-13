@@ -8,6 +8,7 @@ import '../../rider_home/widgets/home_bottom_nav.dart';
 import '../../coach_home/widgets/coach_bottom_nav.dart';
 import '../../landing/screens/landing_screen.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../payments/screens/subscription_screen.dart';
 import '../../../core/models/user_role.dart';
 import '../../../core/navigation/app_navigator.dart';
 
@@ -143,25 +144,44 @@ class ProfileScreen extends StatelessWidget {
                       _buildMenuItem(
                         icon: Icons.history,
                         label: 'Booking History',
-                        onTap: () {},
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Coming soon')),
+                          );
+                        },
                       ),
                       Divider(height: 1, color: AppColors.border, indent: 60),
                       _buildMenuItem(
                         icon: Icons.emoji_events_outlined,
                         label: 'Achievements',
-                        onTap: () {},
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Coming soon')),
+                          );
+                        },
                       ),
                       Divider(height: 1, color: AppColors.border, indent: 60),
                       _buildMenuItem(
                         icon: Icons.payment,
                         label: 'Payment & Subscription',
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SubscriptionScreen(),
+                            ),
+                          );
+                        },
                       ),
                       Divider(height: 1, color: AppColors.border, indent: 60),
                       _buildMenuItem(
                         icon: Icons.settings_outlined,
                         label: 'Settings',
-                        onTap: () {},
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Coming soon')),
+                          );
+                        },
                       ),
                     ],
                   ),

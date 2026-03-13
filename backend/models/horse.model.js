@@ -33,6 +33,35 @@ const Horse = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    age: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    training_level: {
+      type: DataTypes.ENUM('beginner', 'intermediate', 'advanced'),
+      allowNull: true,
+    },
+    temperament: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    injury_notes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    rider_suitability: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    fei_pedigree_link: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
+    },
+    max_daily_sessions: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 3,
+    },
     status: {
       type: DataTypes.ENUM('available', 'busy', 'resting', 'injured'),
       allowNull: false,

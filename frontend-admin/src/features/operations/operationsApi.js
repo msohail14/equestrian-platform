@@ -162,3 +162,57 @@ export const updateRiderStatusApi = ({ riderId, is_active }) =>
   axiosInstance.put(`/riders/${riderId}/status`, { is_active });
 
 export const getAdminDashboardApi = () => axiosInstance.get('/admin/dashboard');
+
+export const getAdminAnalyticsApi = ({ startDate, endDate } = {}) => {
+  const query = new URLSearchParams();
+  if (startDate) query.set('startDate', startDate);
+  if (endDate) query.set('endDate', endDate);
+  return axiosInstance.get(`/admin/analytics?${query.toString()}`);
+};
+export const getAdminBookingsApi = ({ status, page = 1, limit = 10 } = {}) => {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (status) query.set('status', status);
+  return axiosInstance.get(`/admin/bookings?${query.toString()}`);
+};
+export const getAdminPaymentsApi = ({ status, provider, page = 1, limit = 10 } = {}) => {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (status) query.set('status', status);
+  if (provider) query.set('provider', provider);
+  return axiosInstance.get(`/admin/payments?${query.toString()}`);
+};
+export const getAdminPayoutsApi = ({ status, page = 1, limit = 10 } = {}) => {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (status) query.set('status', status);
+  return axiosInstance.get(`/admin/payouts?${query.toString()}`);
+};
+export const processAdminPayoutApi = (payoutId) => axiosInstance.post(`/admin/payouts/${payoutId}/process`);
+export const approveStableApi = (stableId) => axiosInstance.patch(`/admin/stables/${stableId}/approve`);
+export const verifyCoachApi = (coachId) => axiosInstance.patch(`/admin/coaches/${coachId}/verify`);
+export const getAdminSettingsApi = () => axiosInstance.get('/admin/settings');
+export const updateAdminSettingsApi = (settings) => axiosInstance.put('/admin/settings', { settings });
+export const getAdminNotificationsApi = ({ page = 1, limit = 20 } = {}) => {
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  return axiosInstance.get(`/notifications?${query.toString()}`);
+};
+export const markNotificationReadApi = (notificationId) => axiosInstance.patch(`/notifications/${notificationId}/read`);
+export const markAllNotificationsReadApi = () => axiosInstance.patch('/notifications/read-all');
+export const getUnreadNotificationCountApi = () => axiosInstance.get('/notifications/unread-count');
+
+export const saveCourseLayoutApi = ({ courseId, layoutImage, drawingData }) => {
+  const formData = new FormData();
+  if (layoutImage) formData.append('layout_image', layoutImage);
+  if (drawingData) formData.append('layout_drawing_data', JSON.stringify(drawingData));
+  return axiosInstance.post(`/courses/${courseId}/layout`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+export const getCourseLayoutApi = (courseId) => axiosInstance.get(`/courses/${courseId}/layout`);
+export const updateCourseLayoutApi = ({ courseId, layoutImage, drawingData }) => {
+  const formData = new FormData();
+  if (layoutImage) formData.append('layout_image', layoutImage);
+  if (drawingData) formData.append('layout_drawing_data', JSON.stringify(drawingData));
+  return axiosInstance.put(`/courses/${courseId}/layout`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
+export const deleteCourseLayoutApi = (courseId) => axiosInstance.delete(`/courses/${courseId}/layout`);

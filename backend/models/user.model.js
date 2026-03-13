@@ -61,6 +61,31 @@ const User = sequelize.define(
       type: DataTypes.STRING(20),
       allowNull: true,
     },
+    fei_number: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    riding_level: {
+      type: DataTypes.ENUM('beginner', 'intermediate', 'advanced'),
+      allowNull: true,
+    },
+    specialties: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    is_verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    fcm_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
     reset_password_token: {
       type: DataTypes.STRING(255),
       allowNull: true,

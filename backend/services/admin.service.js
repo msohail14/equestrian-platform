@@ -4,10 +4,23 @@ import jwt from 'jsonwebtoken';
 import { Op, QueryTypes } from 'sequelize';
 import Admin from '../models/admin.model.js';
 import sequelize from '../config/database.js';
-import { Arena, Course, CourseEnrollment, Discipline, Horse, Stable, User } from '../models/index.js';
+import { Arena, CoachPayout, Course, CourseEnrollment, CourseSession, Discipline, Horse, LessonBooking, Payment, PlatformSetting, Stable, User } from '../models/index.js';
 import { sendResetPasswordLinkEmail, sendResetTokenEmail } from './mail.service.js';
 
 const publicAdminFields = ['id', 'email', 'first_name', 'last_name', 'created_at'];
+
+const normalizePagination = ({ page, limit } = {}) => {
+  const p = Math.max(1, parseInt(page, 10) || 1);
+  const l = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+  return { page: p, limit: l, offset: (p - 1) * l };
+};
+
+const buildPaginationMeta = ({ totalItems, page, limit }) => ({
+  total_items: totalItems,
+  current_page: page,
+  per_page: limit,
+  total_pages: Math.ceil(totalItems / limit),
+});
 
 const getAdminJwtToken = (admin) =>
   jwt.sign(
@@ -379,4 +392,172 @@ export const getAdminDashboardData = async () => {
       monthly: monthlyEnrollments,
     },
   };
+};
+
+export const getAdminAnalytics = async ({ startDate, endDate }) => {
+  if (!startDate || !endDate) {
+    throw new Error('startDate and endDate are required.');
+  }
+
+  const [riderGrowth, bookingVolume, revenue, totalRevenueRows, totalBookings] = await Promise.all([
+    sequelize.query(
+      `SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count
+       FROM user WHERE role = 'rider' AND created_at BETWEEN :startDate AND :endDate
+       GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY month ASC`,
+      { type: QueryTypes.SELECT, replacements: { startDate, endDate } }
+    ),
+    sequelize.query(
+      `SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count
+       FROM lesson_bookings WHERE created_at BETWEEN :startDate AND :endDate
+       GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY month ASC`,
+      { type: QueryTypes.SELECT, replacements: { startDate, endDate } }
+    ),
+    sequelize.query(
+      `SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(amount) AS total
+       FROM payments WHERE status = 'completed' AND created_at BETWEEN :startDate AND :endDate
+       GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY month ASC`,
+      { type: QueryTypes.SELECT, replacements: { startDate, endDate } }
+    ),
+    sequelize.query(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE status = 'completed'`,
+      { type: QueryTypes.SELECT }
+    ),
+    LessonBooking.count(),
+  ]);
+
+  return {
+    rider_growth: riderGrowth,
+    booking_volume: bookingVolume,
+    revenue,
+    total_revenue: Number(totalRevenueRows[0]?.total || 0),
+    total_bookings: totalBookings,
+  };
+};
+
+export const getAdminPayments = async ({ status, provider, page, limit }) => {
+  const { page: p, limit: l, offset } = normalizePagination({ page, limit });
+  const where = {};
+  if (status) where.status = status;
+  if (provider) where.provider = provider;
+
+  const { count, rows } = await Payment.findAndCountAll({
+    where,
+    include: [{ model: User, as: 'user', attributes: ['first_name', 'last_name', 'email'] }],
+    order: [['created_at', 'DESC']],
+    limit: l,
+    offset,
+  });
+
+  return { data: rows, pagination: buildPaginationMeta({ totalItems: count, page: p, limit: l }) };
+};
+
+export const getAdminPayouts = async ({ status, page, limit }) => {
+  const { page: p, limit: l, offset } = normalizePagination({ page, limit });
+  const where = {};
+  if (status) where.status = status;
+
+  const { count, rows } = await CoachPayout.findAndCountAll({
+    where,
+    include: [
+      { model: User, as: 'coach', attributes: ['first_name', 'last_name'] },
+      { model: CourseSession, as: 'session' },
+    ],
+    order: [['created_at', 'DESC']],
+    limit: l,
+    offset,
+  });
+
+  return { data: rows, pagination: buildPaginationMeta({ totalItems: count, page: p, limit: l }) };
+};
+
+export const processAdminPayout = async ({ payoutId }) => {
+  const payout = await CoachPayout.findByPk(payoutId);
+  if (!payout) {
+    throw new Error('Payout not found.');
+  }
+  if (payout.status !== 'pending') {
+    throw new Error('Only pending payouts can be processed.');
+  }
+
+  payout.status = 'processing';
+  payout.payout_date = new Date().toISOString().slice(0, 10);
+  await payout.save();
+
+  return payout;
+};
+
+export const approveStable = async ({ stableId }) => {
+  const stable = await Stable.findByPk(stableId);
+  if (!stable) {
+    throw new Error('Stable not found.');
+  }
+
+  stable.is_approved = true;
+  await stable.save();
+
+  return stable;
+};
+
+export const verifyCoach = async ({ coachId }) => {
+  const user = await User.findByPk(coachId);
+  if (!user) {
+    throw new Error('Coach not found.');
+  }
+  if (user.role !== 'coach') {
+    throw new Error('User is not a coach.');
+  }
+
+  user.is_verified = true;
+  await user.save();
+
+  return user;
+};
+
+export const getAdminSettings = async () => {
+  const settings = await PlatformSetting.findAll();
+  const result = {};
+  for (const setting of settings) {
+    result[setting.key] = setting.value;
+  }
+  return result;
+};
+
+export const updateAdminSettings = async ({ settings }) => {
+  if (!settings || typeof settings !== 'object') {
+    throw new Error('Settings object is required.');
+  }
+
+  for (const [key, value] of Object.entries(settings)) {
+    const [record] = await PlatformSetting.findOrCreate({
+      where: { key },
+      defaults: { key, value },
+    });
+    if (record.value !== value) {
+      record.value = value;
+      await record.save();
+    }
+  }
+
+  return getAdminSettings();
+};
+
+export const getAdminBookings = async ({ status, page, limit }) => {
+  const { page: p, limit: l, offset } = normalizePagination({ page, limit });
+  const where = {};
+  if (status) where.status = status;
+
+  const { count, rows } = await LessonBooking.findAndCountAll({
+    where,
+    include: [
+      { model: User, as: 'rider', attributes: ['id', 'first_name', 'last_name', 'email'] },
+      { model: User, as: 'coach', attributes: ['id', 'first_name', 'last_name', 'email'] },
+      { model: Stable, as: 'stable', attributes: ['id', 'name'] },
+      { model: Horse, as: 'horse', attributes: ['id', 'name'] },
+    ],
+    order: [['created_at', 'DESC']],
+    limit: l,
+    offset,
+  });
+
+  return { data: rows, pagination: buildPaginationMeta({ totalItems: count, page: p, limit: l }) };
 };
